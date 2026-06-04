@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI 取名后台</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">AI</div>
+          <div>
+            <h1>取名后台</h1>
+            <p>运营管理台</p>
+          </div>
+        </div>
+        <nav class="nav" id="nav"></nav>
+        <section class="auth-panel">
+          <label>API Base</label>
+          <input id="apiBase" />
+          <label>Admin Token</label>
+          <textarea id="token" rows="4" spellcheck="false"></textarea>
+          <button id="saveAuth" class="primary">保存连接</button>
+        </section>
+      </aside>
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="sectionEyebrow">Admin</p>
+            <h2 id="sectionTitle">用户管理</h2>
+          </div>
+          <div class="status" id="statusText">未连接</div>
+        </header>
+        <section id="view" class="view"></section>
+      </main>
+    </div>
+    <script src="./app.js"></script>
+  </body>
+</html>
