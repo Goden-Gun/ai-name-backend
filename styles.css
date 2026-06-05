@@ -9,6 +9,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   min-width: 1180px;
@@ -85,6 +89,33 @@ label {
   display: grid;
   grid-template-columns: 260px 1fr;
   min-height: 100vh;
+}
+
+.login-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background: #eef2f5;
+}
+
+.login-panel {
+  width: 360px;
+  display: grid;
+  gap: 12px;
+  padding: 24px;
+  border: 1px solid #d7dee8;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 48px rgba(26, 42, 60, 0.12);
+}
+
+.login-panel .brand {
+  margin-bottom: 8px;
+}
+
+.login-panel button {
+  width: 100%;
 }
 
 .sidebar {
@@ -188,6 +219,12 @@ label {
   color: #526274;
   font-size: 13px;
   text-align: right;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .view {

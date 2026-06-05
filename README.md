@@ -12,7 +12,8 @@ python3 -m http.server 5175
 ```
 
 3. 浏览器访问 `http://localhost:5175`。
-4. 在左侧填入 API Base 和 `tier=3` 管理员 JWT。
+4. 先输入本期固定管理员密钥进入后台。
+5. 在左侧填入 API Base 和 `tier=3` 管理员 JWT。
 
 ## 模块
 

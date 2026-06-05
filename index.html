@@ -7,7 +7,22 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="shell">
+    <section class="login-screen" id="adminLogin">
+      <div class="login-panel">
+        <div class="brand">
+          <div class="brand-mark">AI</div>
+          <div>
+            <h1>取名后台</h1>
+            <p>管理员登录</p>
+          </div>
+        </div>
+        <label>管理员密钥</label>
+        <input id="adminKeyInput" type="password" autocomplete="current-password" />
+        <div class="form-error" id="adminKeyError"></div>
+        <button class="primary" id="adminKeySubmit">登录后台</button>
+      </div>
+    </section>
+    <div class="shell" id="appShell" hidden>
       <aside class="sidebar">
         <div class="brand">
           <div class="brand-mark">AI</div>
@@ -31,7 +46,10 @@
             <p class="eyebrow" id="sectionEyebrow">Admin</p>
             <h2 id="sectionTitle">用户管理</h2>
           </div>
-          <div class="status" id="statusText">未连接</div>
+          <div class="topbar-actions">
+            <div class="status" id="statusText">未连接</div>
+            <button id="logoutAdmin">退出</button>
+          </div>
         </header>
         <section id="view" class="view"></section>
       </main>

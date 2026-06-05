@@ -8,6 +8,8 @@ const sections = [
 
 const skillOrder = ["naming", "brand-intro", "slogan"];
 const skillFileOrder = ["prompt.md", "manifest.json", "schema.json"];
+const adminAccessKeyHash = "d7904adb142c4ebed5ed2227c0b49feceed45b775be604614c0e46900d0229e7";
+const adminSessionKey = "ai-name.admin.access";
 
 const state = {
   section: "users",
@@ -111,6 +113,52 @@ function selected(value, target) {
   return String(value ?? "") === String(target ?? "") ? "selected" : "";
 }
 
+async function sha256Hex(value) {
+  const encoded = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", encoded);
+  return [...new Uint8Array(digest)].map((item) => item.toString(16).padStart(2, "0")).join("");
+}
+
+function isAdminUnlocked() {
+  return sessionStorage.getItem(adminSessionKey) === "1";
+}
+
+function showLogin() {
+  $("#adminLogin").hidden = false;
+  $("#appShell").hidden = true;
+  $("#adminKeyInput").focus();
+}
+
+function showAdminApp() {
+  $("#adminLogin").hidden = true;
+  $("#appShell").hidden = false;
+  render();
+}
+
+function initAdminLogin() {
+  $("#adminKeySubmit").onclick = async () => {
+    const value = $("#adminKeyInput").value.trim();
+    $("#adminKeyError").textContent = "";
+    if (!value) {
+      $("#adminKeyError").textContent = "请输入管理员密钥";
+      return;
+    }
+    const hash = await sha256Hex(value);
+    if (hash !== adminAccessKeyHash) {
+      $("#adminKeyError").textContent = "管理员密钥不正确";
+      return;
+    }
+    sessionStorage.setItem(adminSessionKey, "1");
+    $("#adminKeyInput").value = "";
+    showAdminApp();
+  };
+  $("#adminKeyInput").onkeydown = (event) => {
+    if (event.key === "Enter") $("#adminKeySubmit").click();
+  };
+  if (isAdminUnlocked()) showAdminApp();
+  else showLogin();
+}
+
 function sortOrderForIndex(index) {
   return (index + 1) * 10;
 }
@@ -202,6 +250,10 @@ function renderShell() {
     localStorage.setItem("admin.apiBase", state.apiBase);
     localStorage.setItem("admin.token", state.token);
     setStatus("连接信息已保存");
+  };
+  $("#logoutAdmin").onclick = () => {
+    sessionStorage.removeItem(adminSessionKey);
+    showLogin();
   };
 }
 
@@ -1067,4 +1119,4 @@ function downloadText(filename, text, type) {
   URL.revokeObjectURL(url);
 }
 
-render();
+initAdminLogin();
