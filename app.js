@@ -416,7 +416,10 @@ async function renderQuestions() {
       <section class="panel question-nav-panel">
         <div class="panel-header">
           <h3 class="panel-title">题库结构</h3>
-          <button id="reloadQuestions">刷新</button>
+          <div class="row-actions">
+            <button class="primary" id="newCategory">新建类别</button>
+            <button id="reloadQuestions">刷新</button>
+          </div>
         </div>
         <div class="panel-body question-tree" id="questionTreeNav"></div>
       </section>
@@ -446,9 +449,17 @@ async function renderQuestions() {
     </div>
   `;
   $("#reloadQuestions").onclick = async () => {
+    if (!state.activeCategoryId) {
+      await renderQuestions();
+      setStatus("题库已刷新");
+      return;
+    }
     await loadQuestionTree();
     paintQuestionWorkbench();
     setStatus("题库已刷新");
+  };
+  $("#newCategory").onclick = () => {
+    openCategoryModal();
   };
   $("#newGroup").onclick = () => {
     openGroupModal();
@@ -496,6 +507,7 @@ function paintQuestionWorkbench() {
 function paintQuestionTree() {
   $("#questionTreeNav").innerHTML = state.categories.map((category) => {
     const isActiveCategory = category.id === state.activeCategoryId;
+    const isEnabled = category.status !== "disabled";
     const groups = isActiveCategory ? (state.questionTree?.groups || []) : [];
     return `
       <div class="tree-block">
@@ -506,6 +518,10 @@ function paintQuestionTree() {
           </span>
           ${statusLabel(category.status)}
         </button>
+        <div class="category-actions">
+          <button type="button" data-toggle-category="${category.id}" data-next-status="${isEnabled ? "disabled" : "enabled"}">${isEnabled ? "禁用" : "启用"}</button>
+          <button type="button" class="danger" data-delete-category="${category.id}">删除</button>
+        </div>
         ${isActiveCategory ? `<div class="tree-children">
           ${groups.length ? groups.map((group) => `
             <button class="tree-node group-node ${group.id === state.activeGroupId ? "active" : ""}" data-group="${group.id}" draggable="true">
@@ -529,6 +545,20 @@ function paintQuestionTree() {
       paintQuestionWorkbench();
     };
   });
+  $("#questionTreeNav").querySelectorAll("button[data-toggle-category]").forEach((button) => {
+    button.onclick = async () => {
+      const category = state.categories.find((item) => item.id === Number(button.dataset.toggleCategory));
+      if (!category) return;
+      await toggleCategoryStatus(category, button.dataset.nextStatus);
+    };
+  });
+  $("#questionTreeNav").querySelectorAll("button[data-delete-category]").forEach((button) => {
+    button.onclick = async () => {
+      const category = state.categories.find((item) => item.id === Number(button.dataset.deleteCategory));
+      if (!category) return;
+      await deleteCategory(category);
+    };
+  });
   $("#questionTreeNav").querySelectorAll("button[data-group]").forEach((button) => {
     button.onclick = () => {
       if (Date.now() < state.sortClickSuppressUntil) return;
@@ -538,6 +568,122 @@ function paintQuestionTree() {
     };
   });
   attachDragSort($("#questionTreeNav").querySelector(".tree-children"), ".group-node[data-group]", "group", reorderGroups);
+}
+
+function nextCategoryOrder() {
+  const maxOrder = Math.max(0, ...state.categories.map((item) => Number(item.sort_order || 0)));
+  return maxOrder + 10;
+}
+
+function renderCategoryFields(prefix, category = {}, submitLabel = "保存类别") {
+  return `
+    <div class="form-grid">
+      <div class="span-5"><label>类别名称</label><textarea class="title-textarea" id="${prefix}CategoryLabel" rows="2">${escapeHtml(category?.label || category?.name || "")}</textarea></div>
+      <div class="span-3"><label>类别标识</label><input id="${prefix}CategoryKey" value="${escapeHtml(category?.key || "")}" placeholder="brand"></div>
+      <div><label>状态</label><select id="${prefix}CategoryStatus">
+        <option value="enabled" ${selected(category?.status || "enabled", "enabled")}>启用</option>
+        <option value="disabled" ${selected(category?.status, "disabled")}>禁用</option>
+      </select></div>
+      <div class="span-5"><label>说明</label><input id="${prefix}CategoryDescription" value="${escapeHtml(category?.description || "")}"></div>
+      <div class="span-5 form-error" id="${prefix}CategoryFormError"></div>
+      <div class="span-5 row-actions">
+        <button class="primary" id="${prefix}SaveCategory">${submitLabel}</button>
+      </div>
+    </div>
+  `;
+}
+
+function attachCategoryForm(prefix, onSave) {
+  $(`#${prefix}SaveCategory`).onclick = onSave;
+}
+
+function readCategoryPayload(prefix, category) {
+  const label = $(`#${prefix}CategoryLabel`).value.trim();
+  const key = $(`#${prefix}CategoryKey`).value.trim();
+  return {
+    key,
+    name: label,
+    label,
+    description: $(`#${prefix}CategoryDescription`).value.trim(),
+    status: $(`#${prefix}CategoryStatus`).value,
+    sort_order: Number(category?.sort_order ?? nextCategoryOrder()),
+  };
+}
+
+async function saveCategory(prefix, category) {
+  const payload = readCategoryPayload(prefix, category);
+  if (!payload.label) {
+    $(`#${prefix}CategoryFormError`).textContent = "类别名称不能为空";
+    return;
+  }
+  if (!payload.key) {
+    $(`#${prefix}CategoryFormError`).textContent = "类别标识不能为空";
+    return;
+  }
+  if (!/^[a-zA-Z0-9_-]+$/.test(payload.key)) {
+    $(`#${prefix}CategoryFormError`).textContent = "类别标识只能包含英文、数字、下划线或中划线";
+    return;
+  }
+  const saved = category
+    ? await api(`/admin/question-categories/${category.id}`, { method: "PATCH", body: JSON.stringify({ ...category, ...payload }) })
+    : await api("/admin/question-categories", { method: "POST", body: JSON.stringify(payload) });
+  state.activeCategoryId = saved.id;
+  state.activeGroupId = 0;
+  state.activeQuestionId = 0;
+  closeModal();
+  await renderQuestions();
+  setStatus("类别已保存");
+}
+
+function openCategoryModal() {
+  closeModal();
+  const modal = document.createElement("div");
+  modal.className = "modal-backdrop";
+  modal.id = "modalRoot";
+  modal.innerHTML = `
+    <section class="modal-panel modal-panel-narrow">
+      <div class="modal-header">
+        <div>
+          <h3 class="panel-title">新建类别</h3>
+          <p class="panel-subtitle">题库结构第一层</p>
+        </div>
+        <button type="button" id="closeModal">关闭</button>
+      </div>
+      <div class="modal-body">
+        ${renderCategoryFields("newCategory", {}, "创建类别")}
+      </div>
+    </section>
+  `;
+  document.body.appendChild(modal);
+  $("#closeModal").onclick = closeModal;
+  modal.onclick = (event) => {
+    if (event.target === modal) closeModal();
+  };
+  attachCategoryForm("newCategory", () => saveCategory("newCategory", null));
+}
+
+async function toggleCategoryStatus(category, status) {
+  const updated = await api(`/admin/question-categories/${category.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ ...category, status }),
+  });
+  state.categories = state.categories.map((item) => (item.id === updated.id ? updated : item));
+  await loadQuestionTree();
+  paintQuestionWorkbench();
+  setStatus(status === "disabled" ? "类别已禁用" : "类别已启用");
+}
+
+async function deleteCategory(category) {
+  if (!category) return;
+  if (!confirm(`确定删除类别「${category.label || category.name || category.key}」吗？该类别下的题组和题目也会一起删除。`)) return;
+  await api(`/admin/question-categories/${category.id}`, { method: "DELETE" });
+  if (state.activeCategoryId === category.id) {
+    state.activeCategoryId = 0;
+    state.activeGroupId = 0;
+    state.activeQuestionId = 0;
+  }
+  await renderQuestions();
+  setStatus("类别已删除");
 }
 
 function paintGroupEditor() {

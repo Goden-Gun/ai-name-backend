@@ -531,6 +531,18 @@ tbody tr.selected-row {
   background: rgba(255, 255, 255, 0.16);
 }
 
+.category-actions {
+  display: flex;
+  gap: 6px;
+  padding: 0 0 4px;
+}
+
+.category-actions button {
+  flex: 1;
+  min-height: 30px;
+  font-size: 12px;
+}
+
 .tree-children {
   display: grid;
   gap: 6px;
