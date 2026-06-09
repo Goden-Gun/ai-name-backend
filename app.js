@@ -6,8 +6,8 @@ const sections = [
   { id: "knowledge", title: "知识库管理", eyebrow: "Knowledge" },
 ];
 
-const skillOrder = ["naming", "brand-intro", "slogan"];
-const skillFileOrder = ["prompt.md", "manifest.json", "schema.json"];
+const skillOrder = ["naming", "brand_intro", "slogan"];
+const skillFileOrder = ["system.md", "user.md", "manifest.yaml"];
 const adminSessionKey = "ai-name.admin.access";
 const adminTokenSessionKey = "ai-name.admin.token";
 
