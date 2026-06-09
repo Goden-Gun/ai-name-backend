@@ -13,7 +13,7 @@ const adminTokenSessionKey = "ai-name.admin.token";
 
 const state = {
   section: "users",
-  apiBase: localStorage.getItem("admin.apiBase") || "http://localhost:9000/api/v1",
+  apiBase: localStorage.getItem("admin.apiBase") || "/api/v1",
   token: sessionStorage.getItem(adminTokenSessionKey) || "",
   categories: [],
   activeCategoryId: 0,
