@@ -8,13 +8,13 @@ const sections = [
 
 const skillOrder = ["naming", "brand-intro", "slogan"];
 const skillFileOrder = ["prompt.md", "manifest.json", "schema.json"];
-const adminAccessKeyHash = "d7904adb142c4ebed5ed2227c0b49feceed45b775be604614c0e46900d0229e7";
 const adminSessionKey = "ai-name.admin.access";
+const adminTokenSessionKey = "ai-name.admin.token";
 
 const state = {
   section: "users",
   apiBase: localStorage.getItem("admin.apiBase") || "http://localhost:9000/api/v1",
-  token: localStorage.getItem("admin.token") || "",
+  token: sessionStorage.getItem(adminTokenSessionKey) || "",
   categories: [],
   activeCategoryId: 0,
   activeGroupId: 0,
@@ -113,14 +113,8 @@ function selected(value, target) {
   return String(value ?? "") === String(target ?? "") ? "selected" : "";
 }
 
-async function sha256Hex(value) {
-  const encoded = new TextEncoder().encode(value);
-  const digest = await crypto.subtle.digest("SHA-256", encoded);
-  return [...new Uint8Array(digest)].map((item) => item.toString(16).padStart(2, "0")).join("");
-}
-
 function isAdminUnlocked() {
-  return sessionStorage.getItem(adminSessionKey) === "1";
+  return sessionStorage.getItem(adminSessionKey) === "1" && Boolean(sessionStorage.getItem(adminTokenSessionKey));
 }
 
 function showLogin() {
@@ -137,26 +131,53 @@ function showAdminApp() {
 
 function initAdminLogin() {
   $("#adminKeySubmit").onclick = async () => {
+    const submitButton = $("#adminKeySubmit");
     const value = $("#adminKeyInput").value.trim();
     $("#adminKeyError").textContent = "";
     if (!value) {
       $("#adminKeyError").textContent = "请输入管理员密钥";
       return;
     }
-    const hash = await sha256Hex(value);
-    if (hash !== adminAccessKeyHash) {
-      $("#adminKeyError").textContent = "管理员密钥不正确";
-      return;
+    submitButton.disabled = true;
+    submitButton.textContent = "登录中...";
+    try {
+      const token = await requestAdminToken(value);
+      state.token = token;
+      sessionStorage.setItem(adminSessionKey, "1");
+      sessionStorage.setItem(adminTokenSessionKey, token);
+      localStorage.removeItem("admin.token");
+      $("#adminKeyInput").value = "";
+      showAdminApp();
+    } catch (error) {
+      $("#adminKeyError").textContent = error.message || "管理员密钥不正确";
+    } finally {
+      submitButton.disabled = false;
+      submitButton.textContent = "登录后台";
     }
-    sessionStorage.setItem(adminSessionKey, "1");
-    $("#adminKeyInput").value = "";
-    showAdminApp();
   };
   $("#adminKeyInput").onkeydown = (event) => {
     if (event.key === "Enter") $("#adminKeySubmit").click();
   };
   if (isAdminUnlocked()) showAdminApp();
   else showLogin();
+}
+
+async function requestAdminToken(accessKey) {
+  let response;
+  try {
+    response = await fetch(`${state.apiBase}/admin/login`, {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ access_key: accessKey }),
+    });
+  } catch {
+    throw new Error("无法连接服务端");
+  }
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !payload || payload.code !== 0 || !payload.data?.token) {
+    throw new Error(payload?.message || payload?.detail || "管理员密钥不正确");
+  }
+  return payload.data.token;
 }
 
 function sortOrderForIndex(index) {
@@ -234,7 +255,6 @@ async function api(path, options = {}) {
 
 function renderShell() {
   $("#apiBase").value = state.apiBase;
-  $("#token").value = state.token;
   $("#nav").innerHTML = sections.map((item) => `
     <button class="${state.section === item.id ? "active" : ""}" data-section="${item.id}">${item.title}</button>
   `).join("");
@@ -246,13 +266,13 @@ function renderShell() {
   });
   $("#saveAuth").onclick = () => {
     state.apiBase = $("#apiBase").value.trim().replace(/\/$/, "");
-    state.token = $("#token").value.trim();
     localStorage.setItem("admin.apiBase", state.apiBase);
-    localStorage.setItem("admin.token", state.token);
-    setStatus("连接信息已保存");
+    setStatus("API Base 已保存");
   };
   $("#logoutAdmin").onclick = () => {
     sessionStorage.removeItem(adminSessionKey);
+    sessionStorage.removeItem(adminTokenSessionKey);
+    state.token = "";
     showLogin();
   };
 }
