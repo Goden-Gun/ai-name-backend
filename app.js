@@ -22,7 +22,7 @@ const state = {
   questionTree: null,
   skills: [],
   activeSkill: "naming",
-  activeSkillFile: "prompt.md",
+  activeSkillFile: "system.md",
   knowledgeSources: [],
   activeKnowledgeId: 0,
   sortClickSuppressUntil: 0,
